@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWP Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        .calculator {
+            background-color: lightpink;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .input-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>SWP Calculator</h2>
+        <div class="input-group">
+            <label for="principal">Investment Amount (₹):</label>
+            <input type="number" id="principal" step="1000" min="0" required>
+        </div>
+
+        <div class="input-group">
+            <label for="rate">Annual Expected Return (%):</label>
+            <input type="number" id="rate" step="0.1" min="0" required>
+        </div>
+
+        <div class="input-group">
+            <label for="frequency">Withdrawal Frequency:</label>
+            <select id="frequency">
+                <option value="12">Monthly</option>
+                <option value="4">Quarterly</option>
+                <option value="2">Half-Yearly</option>
+                <option value="1">Yearly</option>
+            </select>
+        </div>
+
+        <div class="input-group">
+            <label for="period">Withdrawal Period (years):</label>
+            <input type="number" id="period" min="1" required>
+        </div>
+
+        <button onclick="calculateSWP()">Calculate</button>
+
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function calculateSWP() {
+            // Get input values
+            const principal = parseFloat(document.getElementById('principal').value);
+            const annualRate = parseFloat(document.getElementById('rate').value) / 100;
+            const frequency = parseInt(document.getElementById('frequency').value);
+            const period = parseFloat(document.getElementById('period').value);
+
+            // Validate inputs
+            if (isNaN(principal) || isNaN(annualRate) || isNaN(frequency) || isNaN(period)) {
+                alert("Please fill all fields with valid numbers");
+                return;
+            }
+
+            // Calculate monthly rate and total periods
+            const ratePerPeriod = annualRate / frequency;
+            const totalPeriods = frequency * period;
+
+            // SWP calculation formula
+            const numerator = principal * ratePerPeriod;
+            const denominator = 1 - Math.pow(1 + ratePerPeriod, -totalPeriods);
+            
+            const withdrawalAmount = numerator / denominator;
+
+            // Display result
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            
+            if (isFinite(withdrawalAmount)) {
+                resultDiv.innerHTML = `
+                    <h3>Result:</h3>
+                    <p>You can withdraw: ₹${withdrawalAmount.toFixed(2)} per period</p>
+                    <p>Total Withdrawn Amount: ₹${(withdrawalAmount * totalPeriods).toFixed(2)}</p>
+                `;
+            } else {
+                resultDiv.innerHTML = "Invalid calculation. Please check your inputs.";
+            }
+        }
+    </script>
+</body>
+</html>

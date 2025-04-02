@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chess</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: #f0f0f0;
+            font-family: Arial, sans-serif;
+        }
+
+        #chessBoard {
+            width: 560px;
+            height: 560px;
+            border: 2px solid #333;
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+        }
+
+        .square {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 50px;
+            cursor: pointer;
+        }
+
+        .white {
+            background-color: #fff;
+        }
+
+        .black {
+            background-color: #779556;
+        }
+
+        .selected {
+            background-color: #baca44 !important;
+        }
+
+        .possible-move {
+            position: relative;
+        }
+
+        .possible-move::after {
+            content: '';
+            width: 20px;
+            height: 20px;
+            background-color: #00000033;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        #controls {
+            margin: 20px;
+            display: flex;
+            gap: 20px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Chess Game</h1>
+    <div id="controls">
+        <select id="levelSelect">
+            <option value="1">Level 1 - Beginner</option>
+            <option value="2">Level 2 - Intermediate</option>
+            <option value="3">Level 3 - Advanced</option>
+            <option value="4">Level 4 - Expert</option>
+        </select>
+        <button onclick="newGame()">New Game</button>
+    </div>
+    <div id="chessBoard"></div>
+    <div id="status"></div>
+
+    <script>
+        let board = [];
+        let selectedPiece = null;
+        let currentPlayer = 'white';
+        let gameOver = false;
+
+        // Initialize chess board
+        function initializeBoard() {
+            const initialPosition = [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['', '', '', '', '', '', '', ''],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ];
+
+            board = initialPosition.map(row => [...row]);
+            renderBoard();
+        }
+
+        // Render board
+        function renderBoard() {
+            const chessBoard = document.getElementById('chessBoard');
+            chessBoard.innerHTML = '';
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const square = document.createElement('div');
+                    square.className = `square ${(row + col) % 2 === 0 ? 'white' : 'black'}`;
+                    square.dataset.row = row;
+                    square.dataset.col = col;
+                    
+                    if (board[row][col]) {
+                        const piece = document.createElement('div');
+                        piece.textContent = getPieceSymbol(board[row][col]);
+                        piece.style.color = board[row][col] === board[row][col].toLowerCase() ? 'black' : 'white';
+                        square.appendChild(piece);
+                    }
+
+                    square.addEventListener('click', () => handleSquareClick(row, col));
+                    chessBoard.appendChild(square);
+                }
+            }
+        }
+
+        function getPieceSymbol(piece) {
+            const symbols = {
+                'r': '♜', 'n': '♞', 'b': '♝', 'q': '♛', 'k': '♚', 'p': '♟',
+                'R': '♖', 'N': '♘', 'B': '♗', 'Q': '♕', 'K': '♔', 'P': '♙'
+            };
+            return symbols[piece];
+        }
+
+        function handleSquareClick(row, col) {
+            if (gameOver) return;
+
+            const piece = board[row][col];
+            
+            if (selectedPiece) {
+                if (isValidMove(selectedPiece.row, selectedPiece.col, row, col)) {
+                    movePiece(selectedPiece.row, selectedPiece.col, row, col);
+                    selectedPiece = null;
+                    if (currentPlayer === 'white') {
+                        currentPlayer = 'black';
+                        setTimeout(aiMove, 500);
+                    } else {
+                        currentPlayer = 'white';
+                    }
+                    checkGameOver();
+                } else {
+                    selectedPiece = null;
+                }
+                renderBoard();
+            } else if (piece && ((currentPlayer === 'white' && piece === piece.toUpperCase()) || 
+                     (currentPlayer === 'black' && piece === piece.toLowerCase()))) {
+                selectedPiece = { row, col };
+                showPossibleMoves(row, col);
+            }
+        }
+
+        function isValidMove(fromRow, fromCol, toRow, toCol) {
+            // Simplified move validation (basic rules only)
+            const piece = board[fromRow][fromCol].toLowerCase();
+            const target = board[toRow][toCol];
+            
+            // Basic collision check
+            if (target && ((target === target.toLowerCase()) === (board[fromRow][fromCol] === board[fromRow][fromCol].toLowerCase()))) {
+                return false;
+            }
+
+            // Basic movement patterns
+            switch(piece) {
+                case 'p': // Pawn
+                    const direction = board[fromRow][fromCol] === 'P' ? -1 : 1;
+                    const startRow = board[fromRow][fromCol] === 'P' ? 6 : 1;
+                    
+                    // Regular move
+                    if (fromCol === toCol && !target) {
+                        return (toRow === fromRow + direction) || 
+                               (fromRow === startRow && toRow === fromRow + 2*direction);
+                    }
+                    // Capture
+                    if (Math.abs(toCol - fromCol) === 1 && toRow === fromRow + direction && target) {
+                        return true;
+                    }
+                    return false;
+
+                case 'r': // Rook
+                    return (fromRow === toRow || fromCol === toCol);
+
+                case 'n': // Knight
+                    const dx = Math.abs(toCol - fromCol);
+                    const dy = Math.abs(toRow - fromRow);
+                    return (dx === 2 && dy === 1) || (dx === 1 && dy === 2);
+
+                // Add other piece movements here
+            }
+            return true;
+        }
+
+        function showPossibleMoves(row, col) {
+            const squares = document.getElementsByClassName('square');
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (isValidMove(row, col, r, c)) {
+                        const index = r * 8 + c;
+                        squares[index].classList.add('possible-move');
+                    }
+                }
+            }
+            squares[row * 8 + col].classList.add('selected');
+        }
+
+        function movePiece(fromRow, fromCol, toRow, toCol) {
+            board[toRow][toCol] = board[fromRow][fromCol];
+            board[fromRow][fromCol] = '';
+        }
+
+        function aiMove() {
+            const level = parseInt(document.getElementById('levelSelect').value);
+            let depth;
+            switch(level) {
+                case 1: depth = 1; break;
+                case 2: depth = 2; break;
+                case 3: depth = 3; break;
+                case 4: depth = 4; break;
+            }
+
+            const bestMove = minimax(board, depth, -Infinity, Infinity, true);
+            if (bestMove) {
+                movePiece(bestMove.from.row, bestMove.from.col, bestMove.to.row, bestMove.to.col);
+                currentPlayer = 'white';
+                checkGameOver();
+                renderBoard();
+            }
+        }
+
+        function minimax(position, depth, alpha, beta, maximizingPlayer) {
+            if (depth === 0 || gameOver) {
+                return { score: evaluatePosition(position) };
+            }
+
+            let bestMove = null;
+            const moves = getAllMoves(position, maximizingPlayer ? 'black' : 'white');
+
+            if (maximizingPlayer) {
+                let maxEval = -Infinity;
+                for (const move of moves) {
+                    const newPosition = simulateMove(position, move);
+                    const evaluation = minimax(newPosition, depth-1, alpha, beta, false).score;
+                    if (evaluation > maxEval) {
+                        maxEval = evaluation;
+                        bestMove = move;
+                    }
+                    alpha = Math.max(alpha, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return { score: maxEval, move: bestMove };
+            } else {
+                let minEval = Infinity;
+                for (const move of moves) {
+                    const newPosition = simulateMove(position, move);
+                    const evaluation = minimax(newPosition, depth-1, alpha, beta, true).score;
+                    if (evaluation < minEval) {
+                        minEval = evaluation;
+                        bestMove = move;
+                    }
+                    beta = Math.min(beta, evaluation);
+                    if (beta <= alpha) break;
+                }
+                return { score: minEval, move: bestMove };
+            }
+        }
+
+        function evaluatePosition(position) {
+            // Simple material evaluation
+            let score = 0;
+            const pieceValues = {
+                'p': 1, 'n': 3, 'b': 3, 'r': 5, 'q': 9, 'k': 100
+            };
+
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = position[row][col];
+                    if (piece) {
+                        const value = pieceValues[piece.toLowerCase()];
+                        score += piece === piece.toLowerCase() ? -value : value;
+                    }
+                }
+            }
+            return score;
+        }
+
+        function getAllMoves(position, player) {
+            const moves = [];
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    const piece = position[row][col];
+                    if (piece && ((player === 'white' && piece === piece.toUpperCase()) || 
+                                  (player === 'black' && piece === piece.toLowerCase()))) {
+                        for (let r = 0; r < 8; r++) {
+                            for (let c = 0; c < 8; c++) {
+                                if (isValidMove(row, col, r, c)) {
+                                    moves.push({
+                                        from: { row, col },
+                                        to: { row: r, col: c }
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function simulateMove(position, move) {
+            const newPosition = position.map(row => [...row]);
+            newPosition[move.to.row][move.to.col] = newPosition[move.from.row][move.from.col];
+            newPosition[move.from.row][move.from.col] = '';
+            return newPosition;
+        }
+
+        function checkGameOver() {
+            // Simplified game over check
+            let kings = 0;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 8; col++) {
+                    if (board[row][col].toLowerCase() === 'k') kings++;
+                }
+            }
+            if (kings < 2) {
+                gameOver = true;
+                document.getElementById('status').textContent = `Game Over! ${currentPlayer} wins!`;
+            }
+        }
+
+        function newGame() {
+            currentPlayer = 'white';
+            gameOver = false;
+            document.getElementById('status').textContent = '';
+            initializeBoard();
+        }
+
+        // Start the game
+        initializeBoard();
+    </script>
+</body>
+</html>
